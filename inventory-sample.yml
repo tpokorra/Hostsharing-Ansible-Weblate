@@ -13,3 +13,10 @@ weblate:
       admin_name: John
       admin_email: admin@example.org
       admin_password: topsecret
+
+      email_prefix: weblate
+
+      redispassword: redis_pwd_changeme
+      redisport: 13000
+
+      weblate_release: "4.12.1"
