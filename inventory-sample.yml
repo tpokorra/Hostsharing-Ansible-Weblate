@@ -7,3 +7,9 @@ weblate:
       domain: weblate.example.org
       user: weblate
       password: testpassw0rd_changeme
+
+      django_secret_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+
+      admin_name: John
+      admin_email: admin@example.org
+      admin_password: topsecret

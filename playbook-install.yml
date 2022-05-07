@@ -13,51 +13,124 @@
   #################################
   ## create directories
   #################################
-  - name: create directory etc
+  - name: create directory bin
     become: yes
     become_user: "{{pac}}-{{user}}"
     file:
-      path: "/home/pacs/{{pac}}/users/{{user}}/etc"
+      path: "/home/pacs/{{pac}}/users/{{user}}/bin"
       state: directory
-  - name: create directory var/tmp
+
+  - name: create directory weblate
     become: yes
     become_user: "{{pac}}-{{user}}"
     file:
-      path: "/home/pacs/{{pac}}/users/{{user}}/var/tmp"
-      state: directory
-  - name: create directory var/log
-    become: yes
-    become_user: "{{pac}}-{{user}}"
-    file:
-      path: "/home/pacs/{{pac}}/users/{{user}}/var/log"
-      state: directory
-  - name: create directory var/run
-    become: yes
-    become_user: "{{pac}}-{{user}}"
-    file:
-      path: "/home/pacs/{{pac}}/users/{{user}}/var/run"
+      path: "/home/pacs/{{pac}}/users/{{user}}/weblate"
       state: directory
 
   ##################################
-  ## install weblate
+  ## install Weblate
   ##################################
+  - name: create venv
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    command: python3 -m venv .venv chdir="/home/pacs/{{pac}}/users/{{user}}/weblate"
+    args:
+      creates: "/home/pacs/{{pac}}/users/{{user}}/weblate/.venv"
 
-  # TODO
+  - name: install pip packages
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    shell: |
+      source .venv/bin/activate
+      pip install --upgrade pip wheel || exit -1
+      pip install pkgconfig || exit -1
+      pip install "Weblate[all]" || exit -1
+      touch /home/pacs/{{pac}}/users/{{user}}/.ansible_pip_installed
+    args:
+      executable: /bin/bash
+      chdir: "/home/pacs/{{pac}}/users/{{user}}/weblate"
+      creates: "/home/pacs/{{pac}}/users/{{user}}/.ansible_pip_installed"
 
   ##################################
   ## configuration
   ##################################
+  - name: upload configuration file
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    template:
+      src: "templates/settings.py"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/weblate/.venv/lib/python3.7/site-packages/weblate/settings.py"
 
-  # TODO
+  - name: upload restart script
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    template:
+      src: "templates/restart.sh"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/bin/restart.sh"
+      mode: '0744'
 
-  ######################
-  ## initialise instance
-  ######################
+  - name: upload sql script
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    template:
+      src: "templates/sql.sh"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/bin/sql.sh"
+      mode: '0744'
 
-  # TODO
+  ########################
+  ## prepare the site
+  ########################
+  - name: prepare the site
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    shell: |
+      source .venv/bin/activate
+      weblate migrate || exit -1
+      weblate collectstatic || exit -1
+      weblate compress || exit -1
+    args:
+      executable: /bin/bash
+      chdir: "/home/pacs/{{pac}}/users/{{user}}/weblate"
 
   ########################
   ## setup the apache site
   ########################
+  - name: drop htdocs-ssl/.htaccess
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    file:
+       path: "/home/pacs/{{pac}}/users/{{user}}/doms/{{domain}}/htdocs-ssl/.htaccess"
+       state: absent
+  - name: create symbolic link for static
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    file:
+      src: "/home/pacs/{{pac}}/users/{{user}}/saasadmin/static"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/doms/{{domain}}/htdocs-ssl/static"
+      state: link
+  - name: drop subs-ssl/www/index.html
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    file:
+       path: "/home/pacs/{{pac}}/users/{{user}}/doms/{{domain}}/subs-ssl/www/index.html"
+       state: absent
+  - name: create symbolic link for www/static
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    file:
+      src: "/home/pacs/{{pac}}/users/{{user}}/saasadmin/static"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/doms/{{domain}}/subs-ssl/www/static"
+      state: link
+  - name: upload .htaccess file
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    template:
+      src: "templates/htaccess"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/doms/{{domain}}/.htaccess"
+  - name: upload passenger wsgi file
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    template:
+      src: "templates/passenger_wsgi.py"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/doms/{{domain}}/app-ssl/passenger_wsgi.py"
 
-  # TODO
