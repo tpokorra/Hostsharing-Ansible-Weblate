@@ -10,7 +10,7 @@ weblate:
 
       django_secret_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 
-      admin_name: John
+      admin_name: admin
       admin_email: admin@example.org
       admin_password: topsecret
 
@@ -19,4 +19,4 @@ weblate:
       redispassword: redis_pwd_changeme
       redisport: 13000
 
-      weblate_release: "4.12.1"
+      weblate_release: "4.12.2"
