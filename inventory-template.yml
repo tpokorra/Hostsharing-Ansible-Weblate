@@ -1,0 +1,22 @@
+weblate:
+  hosts:
+    {{pac}}-{{username}}:
+      ansible_ssh_host: {{pac}}.hostsharing.net
+      ansible_ssh_user: {{pac}}
+      pac: {{pac}}
+      domain: {{domain}}
+      user: {{username}}
+      password: {{password}}
+
+      django_secret_key: "{{django_secret_key}}"
+
+      admin_name: admin_weblate
+      admin_email: admin@{{domain}}
+      admin_password: {{initial_password}}
+
+      email_prefix: weblate
+
+      redispassword: {{password2}}
+      redisport: {{port1}}
+
+      weblate_release: "4.12.2"
