@@ -866,7 +866,7 @@ REST_FRAMEWORK = {
 FONTS_CDN_URL = None
 
 # Django compressor offline mode
-COMPRESS_OFFLINE = False
+COMPRESS_OFFLINE = True
 COMPRESS_OFFLINE_CONTEXT = [
     {"fonts_cdn_url": FONTS_CDN_URL, "STATIC_URL": STATIC_URL, "LANGUAGE_BIDI": True},
     {"fonts_cdn_url": FONTS_CDN_URL, "STATIC_URL": STATIC_URL, "LANGUAGE_BIDI": False},
@@ -991,8 +991,11 @@ CACHES = {
     },
 }
 
+CELERY_BROKER_URL = "redis://:{{redispassword}}@localhost:{{redisport}}"
+CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+
 ACCOUNT_ACTIVATION_DAYS = 1
-REGISTRATION_OPEN = False
+REGISTRATION_OPEN = True
 DEFAULT_FROM_EMAIL = 'noreply@{{domain}}'
 EMAIL_HOST = 'localhost'
 EMAIL_PORT = 4587
