@@ -5,6 +5,7 @@ weblate:
       ansible_ssh_user: {{pac}}
       pac: {{pac}}
       domain: {{domain}}
+      alternative_domain: {{domain}}
       user: {{username}}
       password: {{password}}
 

@@ -621,6 +621,7 @@ CSRF_COOKIE_SECURE = ENABLE_HTTPS
 CSRF_USE_SESSIONS = True
 # Customize CSRF failure view
 CSRF_FAILURE_VIEW = "weblate.trans.views.error.csrf_failure"
+CSRF_TRUSTED_ORIGINS = ["{{domain}}", "{{alternative_domain}}"]
 SESSION_COOKIE_SECURE = ENABLE_HTTPS
 SESSION_COOKIE_HTTPONLY = True
 # SSL redirect
@@ -669,7 +670,7 @@ ANONYMOUS_USER_NAME = "anonymous"
 
 # Reverse proxy settings
 IP_PROXY_HEADER = "HTTP_X_FORWARDED_FOR"
-IP_BEHIND_REVERSE_PROXY = False
+IP_BEHIND_REVERSE_PROXY = True
 IP_PROXY_OFFSET = 0
 
 # Sending HTML in mails
