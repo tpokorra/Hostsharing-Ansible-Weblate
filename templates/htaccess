@@ -1,3 +1,4 @@
 PassengerFriendlyErrorPages off
 PassengerPython /home/pacs/{{pac}}/users/{{user}}/weblate/.venv/bin/python3
 SetEnv PYTHONPATH /home/pacs/{{pac}}/users/{{user}}/weblate/
+Options -Indexes

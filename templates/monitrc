@@ -11,5 +11,5 @@ check process redis with pidfile /home/pacs/{{pac}}/users/{{user}}/var/run/redis
   stop program "/bin/bash -c '/bin/kill $( cat /home/pacs/{{pac}}/users/{{user}}/var/run/redis-server.pid )'"
 
 check process celery with pidfile /home/pacs/{{pac}}/users/{{user}}/var/run/weblate-celery.pid
-  start program "$HOME/bin/start-celery.sh"
-  stop program "$HOME/bin/stop-celery.sh"
+  start program "/home/pacs/{{pac}}/users/{{user}}/bin/start-celery.sh"
+  stop program "/home/pacs/{{pac}}/users/{{user}}/bin/stop-celery.sh"
