@@ -82,6 +82,7 @@ DATABASES = {
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Data directory
+# TODO
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
 # Local time zone for this installation. Choices can be found here:
@@ -954,7 +955,7 @@ ADMINS = [('{{admin_name}}', '{{admin_email}}')]
 SERVER_EMAIL = 'no-reply@{{domain}}'
 EMAIL_SUBJECT_PREFIX = '[{{email_prefix}}]'
 
-ALLOWED_HOSTS = [".{{domain}}"]
+ALLOWED_HOSTS = [".{{domain}}", "{{alternative_domain}}", "localhost"]
 
 DATABASES = {
     'default': {

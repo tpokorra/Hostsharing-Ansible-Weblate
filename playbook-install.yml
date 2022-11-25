@@ -25,6 +25,12 @@
     file:
       path: "/home/pacs/{{pac}}/users/{{user}}/etc"
       state: directory
+  - name: create directory data and static
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    file:
+      path: "/home/pacs/{{pac}}/users/{{user}}/data/static"
+      state: directory
   - name: create directory var/tmp
     become: yes
     become_user: "{{pac}}-{{user}}"
@@ -47,21 +53,12 @@
   ##################################
   ## install Weblate
   ##################################
-  - name: Check for git working tree
+  - name: create directory weblate
     become: yes
     become_user: "{{pac}}-{{user}}"
-    stat:
-      path: /home/pacs/{{pac}}/users/{{user}}/weblate
-    register: workingtree
-  - name: get weblate repo
-    become: yes
-    become_user: "{{pac}}-{{user}}"
-    git:
-      repo: https://github.com/WeblateOrg/weblate.git
-      dest: /home/pacs/{{pac}}/users/{{user}}/weblate
-      version: weblate-{{weblate_release}}
-      depth: 10
-    when: not workingtree.stat.exists
+    file:
+      path: "/home/pacs/{{pac}}/users/{{user}}/weblate"
+      state: directory
 
   - name: create venv
     become: yes
@@ -76,7 +73,7 @@
     shell: |
       source .venv/bin/activate
       pip install --upgrade pip wheel || exit -1
-      pip install -r requirements.txt || exit -1
+      pip install "Weblate=={{weblate_release}}" || exit -1
       pip install psycopg2 || exit -1
       pip install --force-reinstall --no-binary :all: cffi || exit -1
       touch /home/pacs/{{pac}}/users/{{user}}/.ansible_pip_installed
@@ -93,7 +90,23 @@
     become_user: "{{pac}}-{{user}}"
     template:
       src: "templates/settings.py"
-      dest: "/home/pacs/{{pac}}/users/{{user}}/weblate/weblate/settings.py"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/etc/settings.py"
+
+  - name: create symbolic link for settings file
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    file:
+      src: "/home/pacs/{{pac}}/users/{{user}}/etc/settings.py"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/weblate/.venv/lib/python3.7/site-packages/weblate/settings.py"
+      state: link
+
+  - name: create symbolic link for data
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    file:
+      src: "/home/pacs/{{pac}}/users/{{user}}/data"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/weblate/.venv/lib/python3.7/site-packages/data"
+      state: link
 
   - name: upload restart script
     become: yes
@@ -130,7 +143,7 @@
     become: yes
     become_user: "{{pac}}-{{user}}"
     file:
-      src: "/home/pacs/{{pac}}/users/{{user}}/weblate/data/static"
+      src: "/home/pacs/{{pac}}/users/{{user}}/data/static"
       dest: "/home/pacs/{{pac}}/users/{{user}}/doms/{{domain}}/htdocs-ssl/static"
       state: link
   - name: upload .htaccess file
@@ -218,9 +231,10 @@
     become_user: "{{pac}}-{{user}}"
     shell: |
       source .venv/bin/activate
-      python manage.py migrate || exit -1
-      echo "yes" | python manage.py collectstatic || exit -1
-      python manage.py compress || exit -1
+      weblate migrate  --noinput || exit -1
+      weblate collectstatic --noinput --clear || exit -1
+      weblate compress || exit -1
+      weblate compilemessages || exit -1
     args:
       executable: /bin/bash
       chdir: "/home/pacs/{{pac}}/users/{{user}}/weblate"

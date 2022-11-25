@@ -1,0 +1,84 @@
+---
+- hosts: weblate
+  become_user: "{{pac}}-{{user}}"
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+
+  - name: disable the passenger web service
+    become: yes
+    shell: |
+      if [ -f doms/{{domain}}/app-ssl/passenger_wsgi.py ]; then mv doms/{{domain}}/app-ssl/passenger_wsgi.py .; fi
+      ./bin/restart.sh || exit -1
+    args:
+      executable: /bin/bash
+      chdir: "/home/pacs/{{pac}}/users/{{user}}"
+
+  # this won't work because we have not enabled the http interface for monit
+  #- name: stop the services via monit
+  #  become: yes
+  #  shell: |
+  #    monit stop redis || exit -1
+  #    monit stop celery || exit -1
+  #  args:
+  #    executable: /bin/bash
+  #    chdir: "/home/pacs/{{pac}}/users/{{user}}"
+
+  - name: stop monit and the services
+    become: yes
+    shell: |
+      killall --user {{pac}}-{{user}} monit
+      /bin/kill $( cat /home/pacs/{{pac}}/users/{{user}}/var/run/redis-server.pid )
+      ./bin/stop-celery.sh
+    args:
+      executable: /bin/bash
+      chdir: "/home/pacs/{{pac}}/users/{{user}}"
+
+  #don't upgrade all:
+  #tesserocr.cpp:746:10: fatal error: leptonica/allheaders.h: No such file or directory
+  - name: upgrade weblate
+    become: yes
+    shell: |
+      source .venv/bin/activate
+      pip install --upgrade "Weblate=={{weblate_release}}" || exit -1
+    args:
+      executable: /bin/bash
+      chdir: "/home/pacs/{{pac}}/users/{{user}}/weblate"
+
+  - name: start the redis service
+    become: yes
+    shell: |
+      /usr/bin/redis-server /home/pacs/{{pac}}/users/{{user}}/etc/redis.conf || exit -1
+    args:
+      executable: /bin/bash
+      chdir: "/home/pacs/{{pac}}/users/{{user}}"
+
+  - name: upgrade the data
+    become: yes
+    shell: |
+      source .venv/bin/activate
+      weblate migrate --noinput || exit -1
+      weblate collectstatic --noinput --clear || exit -1
+      weblate compress || exit -1
+      weblate compilemessages || exit -1
+    args:
+      executable: /bin/bash
+      chdir: "/home/pacs/{{pac}}/users/{{user}}/weblate"
+
+  - name: start the services via monit
+    become: yes
+    shell: |
+      rm -f $HOME/var/run/* && /usr/bin/monit -c "$HOME/.monitrc" || exit -1
+    args:
+      executable: /bin/bash
+      chdir: "/home/pacs/{{pac}}/users/{{user}}"
+
+  - name: enable the passenger web service
+    become: yes
+    shell: |
+      mv ./passenger_wsgi.py doms/{{domain}}/app-ssl/ || exit -1
+      ./bin/restart.sh || exit -1
+    args:
+      executable: /bin/bash
+      chdir: "/home/pacs/{{pac}}/users/{{user}}"
