@@ -59,6 +59,14 @@
     shell: |
       source .venv/bin/activate
       weblate migrate --noinput || exit -1
+    args:
+      executable: /bin/bash
+      chdir: "/home/pacs/{{pac}}/users/{{user}}/weblate"
+
+  - name: upgrade the static files
+    become: yes
+    shell: |
+      source .venv/bin/activate
       weblate collectstatic --noinput --clear || exit -1
       weblate compress || exit -1
       weblate compilemessages || exit -1
