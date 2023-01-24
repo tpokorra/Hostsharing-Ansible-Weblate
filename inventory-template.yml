@@ -20,4 +20,4 @@ weblate:
       redispassword: {{password2}}
       redisport: {{port1}}
 
-      weblate_release: "4.15"
+      weblate_release: "4.15.1"
