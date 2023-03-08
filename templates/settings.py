@@ -63,11 +63,8 @@ DATABASES = {
     }
 }
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 # Data directory
-# TODO
-DATA_DIR = os.path.join(BASE_DIR, "data")
+DATA_DIR = "/home/pacs/{{pac}}/users/{{user}}/data"
 CACHE_DIR = f"{DATA_DIR}/cache"
 
 # Local time zone for this installation. Choices can be found here:
@@ -982,6 +979,7 @@ CACHES = {
             "CONNECTION_POOL_KWARGS": {},
         },
         "KEY_PREFIX": "weblate",
+        "TIMEOUT": 3600,
     },
     "avatar": {
         "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",

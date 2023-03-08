@@ -9,7 +9,7 @@
   - name: disable the passenger web service
     become: yes
     shell: |
-      if [ -f doms/{{domain}}/app-ssl/passenger_wsgi.py ]; then mv doms/{{domain}}/app-ssl/passenger_wsgi.py .; fi
+      if [ -f doms/{{domain}}/app-ssl/passenger_wsgi.py ]; then rm doms/{{domain}}/app-ssl/passenger_wsgi.py; fi
       ./bin/restart.sh || exit -1
     args:
       executable: /bin/bash
@@ -56,7 +56,6 @@
 
   - name: upload configuration file
     become: yes
-    become_user: "{{pac}}-{{user}}"
     template:
       src: "templates/settings.py"
       dest: "/home/pacs/{{pac}}/users/{{user}}/etc/settings.py"
@@ -81,6 +80,13 @@
       executable: /bin/bash
       chdir: "/home/pacs/{{pac}}/users/{{user}}/weblate"
 
+  - name: update symbolic link for static
+    become: yes
+    file:
+      src: "/home/pacs/{{pac}}/users/{{user}}/data/cache/static"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/doms/{{domain}}/htdocs-ssl/static"
+      state: link
+
   - name: start the services via monit
     become: yes
     shell: |
@@ -89,10 +95,16 @@
       executable: /bin/bash
       chdir: "/home/pacs/{{pac}}/users/{{user}}"
 
+  - name: upload passenger wsgi file
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    template:
+      src: "templates/passenger_wsgi.py"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/doms/{{domain}}/app-ssl/passenger_wsgi.py"
+
   - name: enable the passenger web service
     become: yes
     shell: |
-      mv ./passenger_wsgi.py doms/{{domain}}/app-ssl/ || exit -1
       ./bin/restart.sh || exit -1
     args:
       executable: /bin/bash
