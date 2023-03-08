@@ -54,6 +54,13 @@
       executable: /bin/bash
       chdir: "/home/pacs/{{pac}}/users/{{user}}"
 
+  - name: upload configuration file
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    template:
+      src: "templates/settings.py"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/etc/settings.py"
+
   - name: upgrade the data
     become: yes
     shell: |

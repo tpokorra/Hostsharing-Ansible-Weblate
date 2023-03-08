@@ -1,22 +1,6 @@
+# Copyright © Michal Čihař <michal@weblate.org>
 #
-# Copyright © 2012–2022 Michal Čihař <michal@cihar.com>
-#
-# This file is part of Weblate <https://weblate.org/>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 import os
 import platform
@@ -84,6 +68,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Data directory
 # TODO
 DATA_DIR = os.path.join(BASE_DIR, "data")
+CACHE_DIR = f"{DATA_DIR}/cache"
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
@@ -172,7 +157,7 @@ MEDIA_URL = f"{URL_PREFIX}/media/"
 # Absolute path to the directory static files should be collected to.
 # Don't put anything in this directory yourself; store your static files
 # in apps' "static/" subdirectories and in STATICFILES_DIRS.
-STATIC_ROOT = os.path.join(DATA_DIR, "static")
+STATIC_ROOT = os.path.join(CACHE_DIR, "static")
 
 # URL prefix for static files.
 STATIC_URL = f"{URL_PREFIX}/static/"
@@ -193,7 +178,7 @@ STATICFILES_FINDERS = (
 )
 
 # Make this unique, and don't share it with anybody.
-# You can generate it using weblate/examples/generate-secret-key
+# You can generate it using weblate-generate-secret-key
 SECRET_KEY = ""
 
 TEMPLATES = [
@@ -217,13 +202,15 @@ TEMPLATES = [
 
 # GitHub username and token for sending pull requests.
 # Please see the documentation for more details.
-GITHUB_USERNAME = None
-GITHUB_TOKEN = None
+GITHUB_CREDENTIALS = {}
 
 # GitLab username and token for sending merge requests.
 # Please see the documentation for more details.
-GITLAB_USERNAME = None
-GITLAB_TOKEN = None
+GITLAB_CREDENTIALS = {}
+
+# Bitbucket username and token for sending merge requests.
+# Please see the documentation for more details.
+BITBUCKETSERVER_CREDENTIALS = {}
 
 # Authentication configuration
 AUTHENTICATION_BACKENDS = (
@@ -359,6 +346,7 @@ REQUIRE_LOGIN = False
 MIDDLEWARE = [
     "weblate.middleware.RedirectMiddleware",
     "weblate.middleware.ProxyMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -411,10 +399,13 @@ INSTALLED_APPS = [
     # Third party Django modules
     "social_django",
     "crispy_forms",
+    "crispy_bootstrap3",
     "compressor",
     "rest_framework",
     "rest_framework.authtoken",
     "django_filters",
+    "django_celery_beat",
+    "corsheaders",
 ]
 
 # Custom exception reporter to include some details
@@ -436,10 +427,7 @@ if platform.system() != "Windows":
     except OSError:
         HAVE_SYSLOG = False
 
-if DEBUG or not HAVE_SYSLOG:
-    DEFAULT_LOG = "console"
-else:
-    DEFAULT_LOG = "syslog"
+DEFAULT_LOG = "console" if DEBUG or not HAVE_SYSLOG else "syslog"
 DEFAULT_LOGLEVEL = "DEBUG" if DEBUG else "INFO"
 
 # A sample logging configuration. The only tangible logging
@@ -622,11 +610,11 @@ CSRF_COOKIE_SECURE = ENABLE_HTTPS
 CSRF_USE_SESSIONS = True
 # Customize CSRF failure view
 CSRF_FAILURE_VIEW = "weblate.trans.views.error.csrf_failure"
-CSRF_TRUSTED_ORIGINS = ["{{domain}}", "{{alternative_domain}}"]
 SESSION_COOKIE_SECURE = ENABLE_HTTPS
 SESSION_COOKIE_HTTPONLY = True
 # SSL redirect
 SECURE_SSL_REDIRECT = ENABLE_HTTPS
+SECURE_SSL_HOST = SITE_DOMAIN
 # Sent referrrer only for same origin links
 SECURE_REFERRER_POLICY = "same-origin"
 # SSL redirect URL exemption list
@@ -637,6 +625,8 @@ SESSION_COOKIE_AGE_AUTHENTICATED = 1209600
 SESSION_COOKIE_SAMESITE = "Lax"
 # Increase allowed upload size
 DATA_UPLOAD_MAX_MEMORY_SIZE = 50000000
+# Allow more fields for case with a lot of subscriptions in profile
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 2000
 
 # Apply session coookie settings to language cookie as ewll
 LANGUAGE_COOKIE_SECURE = SESSION_COOKIE_SECURE
@@ -692,6 +682,7 @@ LIMIT_TRANSLATION_LENGTH_BY_SOURCE_LENGTH = True
 SIMPLIFY_LANGUAGES = True
 
 # Render forms using bootstrap
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap3"
 CRISPY_TEMPLATE_PACK = "bootstrap3"
 
 # List of quality checks
@@ -789,6 +780,7 @@ CRISPY_TEMPLATE_PACK = "bootstrap3"
 #     "weblate.addons.generate.PseudolocaleAddon",
 #     "weblate.addons.generate.PrefillAddon",
 #     "weblate.addons.json.JSONCustomizeAddon",
+#     "weblate.addons.xml.XMLCustomizeAddon",
 #     "weblate.addons.properties.PropertiesSortAddon",
 #     "weblate.addons.git.GitSquashAddon",
 #     "weblate.addons.removal.RemoveComments",
@@ -824,10 +816,11 @@ CACHES = {
             "CONNECTION_POOL_KWARGS": {},
         },
         "KEY_PREFIX": "weblate",
+        "TIMEOUT": 3600,
     },
     "avatar": {
         "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
-        "LOCATION": os.path.join(DATA_DIR, "avatar-cache"),
+        "LOCATION": os.path.join(CACHE_DIR, "avatar"),
         "TIMEOUT": 86400,
         "OPTIONS": {"MAX_ENTRIES": 1000},
     },
@@ -858,8 +851,8 @@ REST_FRAMEWORK = {
         "weblate.api.throttling.AnonRateThrottle",
     ),
     "DEFAULT_THROTTLE_RATES": {"anon": "100/day", "user": "5000/hour"},
-    "DEFAULT_PAGINATION_CLASS": ("rest_framework.pagination.PageNumberPagination"),
-    "PAGE_SIZE": 20,
+    "DEFAULT_PAGINATION_CLASS": "weblate.api.pagination.StandardPagination",
+    "PAGE_SIZE": 50,
     "VIEW_DESCRIPTION_FUNCTION": "weblate.api.views.get_view_description",
     "UNAUTHENTICATED_USER": "weblate.auth.models.get_anonymous",
 }
@@ -868,7 +861,7 @@ REST_FRAMEWORK = {
 FONTS_CDN_URL = None
 
 # Django compressor offline mode
-COMPRESS_OFFLINE = True
+COMPRESS_OFFLINE = False
 COMPRESS_OFFLINE_CONTEXT = [
     {"fonts_cdn_url": FONTS_CDN_URL, "STATIC_URL": STATIC_URL, "LANGUAGE_BIDI": True},
     {"fonts_cdn_url": FONTS_CDN_URL, "STATIC_URL": STATIC_URL, "LANGUAGE_BIDI": False},
@@ -912,7 +905,7 @@ CELERY_RESULT_BACKEND = CELERY_BROKER_URL
 
 # Celery settings, it is not recommended to change these
 CELERY_WORKER_MAX_MEMORY_PER_CHILD = 200000
-CELERY_BEAT_SCHEDULE_FILENAME = os.path.join(DATA_DIR, "celery", "beat-schedule")
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 CELERY_TASK_ROUTES = {
     "weblate.trans.tasks.auto_translate*": {"queue": "translate"},
     "weblate.accounts.tasks.notify_*": {"queue": "notify"},
@@ -923,6 +916,10 @@ CELERY_TASK_ROUTES = {
     "weblate.wladmin.tasks.backup_service": {"queue": "backup"},
     "weblate.memory.tasks.*": {"queue": "memory"},
 }
+
+# CORS allowed origins
+CORS_ALLOWED_ORIGINS = []
+CORS_URLS_REGEX = r"^/api/.*$"
 
 # Enable plain database backups
 DATABASE_BACKUP = "plain"
@@ -955,6 +952,7 @@ ADMINS = [('{{admin_name}}', '{{admin_email}}')]
 SERVER_EMAIL = 'no-reply@{{domain}}'
 EMAIL_SUBJECT_PREFIX = '[{{email_prefix}}]'
 
+CSRF_TRUSTED_ORIGINS = ["{{domain}}", "{{alternative_domain}}"]
 ALLOWED_HOSTS = [".{{domain}}", "{{alternative_domain}}", "localhost"]
 
 DATABASES = {
@@ -987,7 +985,7 @@ CACHES = {
     },
     "avatar": {
         "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
-        "LOCATION": os.path.join(DATA_DIR, "avatar-cache"),
+        "LOCATION": os.path.join(CACHE_DIR, "avatar"),
         "TIMEOUT": 86400,
         "OPTIONS": {"MAX_ENTRIES": 1000},
     },
@@ -1007,3 +1005,6 @@ EMAIL_USE_TLS = True
 
 DEFAULT_FRONTEND_LANGUAGE = 'DE'
 AVAILABLE_FRONTEND_LANGUAGES = ['EN', 'DE']
+
+# Django compressor offline mode
+COMPRESS_OFFLINE = True
