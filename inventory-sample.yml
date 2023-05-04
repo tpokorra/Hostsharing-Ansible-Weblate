@@ -21,4 +21,4 @@ weblate:
       redisport: 13000
 
       # see https://github.com/WeblateOrg/weblate/releases
-      weblate_release: "4.16.4"
+      weblate_release: "4.17"
